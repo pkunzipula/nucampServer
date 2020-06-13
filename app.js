@@ -1,14 +1,13 @@
 var createError = require("http-errors");
 var express = require("express");
 var path = require("path");
-var cookieParser = require("cookie-parser");
 var logger = require("morgan");
-const session = require("express-session");
-const FileStore = require("session-file-store")(session);
+const passport = require("passport");
+const config = require("./config");
 
 const mongoose = require("mongoose");
 
-const url = "mongodb://localhost:27017/nucampsite";
+const url = config.mongoUrl;
 
 const connect = mongoose.connect(url, {
   useCreateIndex: true,
@@ -27,7 +26,6 @@ var usersRouter = require("./routes/users");
 const campsiteRouter = require("./routes/campsiteRouter");
 const promotionRouter = require("./routes/promotionRouter");
 const partnerRouter = require("./routes/partnerRouter");
-const secretsRouter = require("./routes/secretsRouter");
 
 var app = express();
 
@@ -42,68 +40,17 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-// app.use(cookieParser("12345-67890-09876-54321"));
-app.use(
-  session({
-    name: "session-id",
-    secret: "12345-67890-09876-54321",
-    saveUninitialized: false,
-    resave: false,
-    store: new FileStore(),
-  })
-);
+
+app.use(passport.initialize());
 
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
-
-function auth(req, res, next) {
-  console.log(req.session);
-
-  if (!req.session.user) {
-    // const authHeader = req.headers.authorization;
-    // if (!authHeader) {
-    const err = new Error("Show me some credentials firstirino!");
-    // res.setHeader("WWW-Authenticate", "Basic");
-    err.status = 401;
-    return next(err);
-    // }
-
-    // const auth = Buffer.from(authHeader.split(" ")[1], "base64")
-    //   .toString()
-    //   .split(":");
-
-    // const [user, pass] = auth;
-
-    // if (user === "admin" && pass === "password") {
-    //   // res.cookie("user", "admin", { signed: true });
-    //   req.session.user = "admin";
-    //   console.log("YER IN, BUDDY!");
-    //   return next();
-    // } else {
-    //   const err = new Error("Your username or password is incorrect");
-    //   res.setHeader("WWW-Authenticate", "Basic");
-    //   err.status = 401;
-    //   return next(err);
-    // }
-  } else {
-    if (req.session.user === "authenticated") {
-      return next();
-    } else {
-      const err = new Error("Your username or password is incorrect");
-      err.status = 401;
-      return next(err);
-    }
-  }
-}
-
-app.use(auth);
 
 app.use(express.static(path.join(__dirname, "public")));
 
 app.use("/campsites", campsiteRouter);
 app.use("/promotions", promotionRouter);
 app.use("/partners", partnerRouter);
-app.use("/secrets", secretsRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
